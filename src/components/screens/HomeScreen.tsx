@@ -1,73 +1,203 @@
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { appEnv } from "../../config/env";
 import { useAppInfo } from "../../hooks/useAppInfo";
-import { capitalize, formatTitle } from "../../lib/utils";
+import { AppHeader } from "../layout/AppHeader";
+import { Button } from "../ui/Button";
+import { Input } from "../ui/Input";
+import { Panel } from "../ui/Panel";
+import { Progress } from "../ui/Progress";
+import "./HomeScreen.css";
+
+type Phase = "idle" | "loading";
+
+const SIMULATED_FETCH_MS = 1800;
+
+function isValidUrl(value: string): boolean {
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+  return (
+    target.tagName === "INPUT" ||
+    target.tagName === "TEXTAREA" ||
+    target.isContentEditable ||
+    target.closest("input, textarea, [contenteditable]") !== null
+  );
+}
+
+function modKey(): string {
+  return /mac/i.test(navigator.platform ?? "") ? "⌘" : "Ctrl+";
+}
 
 export function HomeScreen() {
-  const { status, info, message } = useAppInfo();
+  const [value, setValue] = useState("");
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const timerRef = useRef<number | null>(null);
+  const { status, info } = useAppInfo();
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current !== null) {
+        window.clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
+
+  const handleSubmit = useCallback(
+    (event: FormEvent) => {
+      event.preventDefault();
+      if (phase === "loading") {
+        return;
+      }
+      const trimmed = value.trim();
+      if (!trimmed) {
+        inputRef.current?.focus();
+        return;
+      }
+      if (!isValidUrl(trimmed)) {
+        setError("Enter a valid URL, including https://");
+        inputRef.current?.focus();
+        return;
+      }
+      setError(null);
+      setPhase("loading");
+      timerRef.current = window.setTimeout(() => {
+        setPhase("idle");
+      }, SIMULATED_FETCH_MS);
+    },
+    [phase, value],
+  );
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      const mod = event.metaKey || event.ctrlKey;
+
+      if (mod && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        inputRef.current?.focus();
+        inputRef.current?.select();
+        return;
+      }
+
+      if (mod && event.key.toLowerCase() === "v") {
+        if (isEditableTarget(event.target)) {
+          return;
+        }
+        navigator.clipboard?.readText().then((text) => {
+          if (text) {
+            setValue(text);
+            setError(null);
+          }
+        }).catch(() => {});
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  const backendLabel =
+    status === "ready"
+      ? "Backend connected"
+      : status === "error"
+        ? "Backend unreachable"
+        : "Connecting to backend…";
 
   return (
-    <main className="home">
-      <section className="card" aria-label="SyncBit status">
-        <div className="brand">
-          <span className="logo" aria-hidden="true">
-            <svg viewBox="0 0 32 32" role="img">
-              <rect width="32" height="32" rx="7" />
-              <path
-                d="M9 16h13m0 0-4-4m4 4-4 4"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="none"
-              />
-            </svg>
-          </span>
-          <div>
-            <h1>SyncBit is running</h1>
-            <p className="subtitle">
-              {appEnv.environment === "development"
-                ? "Development build"
-                : "Production build"}
+    <div className="app">
+      <a className="skip-link" href="#main">
+        Skip to content
+      </a>
+
+      <AppHeader />
+
+      <main id="main" className="home">
+        <div className="home__inner">
+          <section className="hero" aria-labelledby="hero-title">
+            <p className="hero__eyebrow">SyncBit</p>
+            <h1 id="hero-title" className="hero__title">
+              Turn any link into a file.
+            </h1>
+            <p className="hero__subtitle">
+              Paste a URL and SyncBit fetches the content — files, media, pages —
+              and keeps it in sync locally.
             </p>
-          </div>
+          </section>
+
+          <form className="fetch" onSubmit={handleSubmit} noValidate>
+            <Input
+              ref={inputRef}
+              className="fetch__field"
+              controlClassName="fetch__bar"
+              label="Link"
+              hint={`Press ${modKey()}K to focus`}
+              placeholder="https://example.com/file.zip"
+              type="url"
+              autoComplete="url"
+              spellCheck={false}
+              value={value}
+              disabled={phase === "loading"}
+              error={error ?? undefined}
+              onChange={(event) => {
+                setValue(event.target.value);
+                if (error) {
+                  setError(null);
+                }
+              }}
+              action={
+                <Button
+                  type="submit"
+                  className="fetch__submit"
+                  loading={phase === "loading"}
+                >
+                  {phase === "loading" ? "Fetching…" : "Fetch"}
+                </Button>
+              }
+            />
+
+            {phase === "loading" && (
+              <div className="fetch__status" aria-live="polite">
+                <Progress />
+                <p className="fetch__status-text">
+                  Fetching {value.trim()}…
+                </p>
+              </div>
+            )}
+          </form>
+
+          <Panel className="empty" aria-label="No downloads yet">
+            <p className="empty__title">No downloads yet</p>
+            <p className="empty__text">
+              Fetched files will appear here with their sync status. Paste a
+              link above to get started.
+            </p>
+          </Panel>
+
+          <footer className="home__footer">
+            <span className="home__footer-item">
+              <span
+                className={`home__status-dot home__status-dot--${status}`}
+                aria-hidden="true"
+              />
+              {backendLabel}
+            </span>
+            <span className="home__footer-divider" aria-hidden="true" />
+            <span className="home__footer-item">
+              {info ? `v${info.version}` : `v${appEnv.version ?? "0.1.0"}`}
+            </span>
+          </footer>
         </div>
-
-        {status === "loading" && <p className="status">Connecting to backend…</p>}
-
-        {status === "error" && (
-          <div className="status error" role="alert">
-            <strong>Backend unreachable</strong>
-            <span>{message}</span>
-          </div>
-        )}
-
-        {status === "ready" && info && (
-          <dl className="details">
-            <div>
-              <dt>Build</dt>
-              <dd>{formatTitle(info.name, info.version)}</dd>
-            </div>
-            <div>
-              <dt>Environment</dt>
-              <dd>{capitalize(info.environment)}</dd>
-            </div>
-            <div>
-              <dt>Platform</dt>
-              <dd>
-                {capitalize(info.platform)} ({info.arch})
-              </dd>
-            </div>
-            <div>
-              <dt>Log level</dt>
-              <dd>{info.logLevel}</dd>
-            </div>
-            <div>
-              <dt>Data directory</dt>
-              <dd className="path">{info.dataDir}</dd>
-            </div>
-          </dl>
-        )}
-      </section>
-    </main>
+      </main>
+    </div>
   );
 }
