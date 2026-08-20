@@ -36,7 +36,7 @@ impl YouTubeProvider {
         Self { http }
     }
 
-    async fn fetch_watch_metadata(&self, video_id: &str) -> AppResult<MediaMetadata> {
+    async fn fetch_player_response(&self, video_id: &str) -> AppResult<PlayerResponse> {
         let response = self
             .http
             .get(format!("{WATCH_URL}?v={video_id}"))
@@ -72,6 +72,12 @@ impl YouTubeProvider {
                     .unwrap_or_else(|| "video is not publicly playable".into()),
             ));
         }
+
+        Ok(player)
+    }
+
+    async fn fetch_watch_metadata(&self, video_id: &str) -> AppResult<MediaMetadata> {
+        let player = self.fetch_player_response(video_id).await?;
 
         let details = player.video_details.ok_or_else(|| {
             AppError::Metadata("player response is missing video details".into())
@@ -115,6 +121,22 @@ impl YouTubeProvider {
             formats,
         })
     }
+
+    async fn resolve_stream_url(&self, video_id: &str, format_id: &str) -> AppResult<String> {
+        let player = self.fetch_player_response(video_id).await?;
+        let data = player.streaming_data.ok_or_else(|| {
+            AppError::Metadata("player response is missing streaming data".into())
+        })?;
+        let format = data
+            .formats
+            .iter()
+            .find(|format| format.itag.map(|itag| itag.to_string()).as_deref() == Some(format_id))
+            .ok_or_else(|| AppError::FormatNotFound(format_id.into()))?;
+        format
+            .url
+            .clone()
+            .ok_or_else(|| AppError::FormatNotFound(format_id.into()))
+    }
 }
 
 impl Default for YouTubeProvider {
@@ -145,6 +167,20 @@ impl MediaProvider for YouTubeProvider {
                 AppError::UnsupportedUrl("not a valid YouTube video URL".into())
             })?;
             self.fetch_watch_metadata(&video_id).await
+        })
+    }
+
+    fn resolve_download_url(
+        &self,
+        url: Url,
+        format_id: &str,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = AppResult<String>> + Send + '_>> {
+        let format_id = format_id.to_string();
+        Box::pin(async move {
+            let video_id = extract_video_id(&url).ok_or_else(|| {
+                AppError::UnsupportedUrl("not a valid YouTube video URL".into())
+            })?;
+            self.resolve_stream_url(&video_id, &format_id).await
         })
     }
 }
@@ -244,6 +280,7 @@ struct StreamingData {
 #[derive(Debug, serde::Deserialize)]
 struct StreamFormat {
     itag: Option<u32>,
+    url: Option<String>,
     #[serde(rename = "mimeType")]
     mime_type: Option<String>,
     width: Option<u32>,
@@ -438,6 +475,7 @@ mod tests {
         let formats = vec![
             StreamFormat {
                 itag: Some(18),
+                url: Some("https://stream.example/video18".into()),
                 mime_type: Some("video/mp4; codecs=\"avc1.42001E, mp4a.40.2\"".into()),
                 width: Some(640),
                 height: Some(360),
@@ -446,6 +484,7 @@ mod tests {
             },
             StreamFormat {
                 itag: Some(22),
+                url: Some("https://stream.example/video22".into()),
                 mime_type: Some("video/mp4; codecs=\"avc1.64001F, mp4a.40.2\"".into()),
                 width: Some(1280),
                 height: Some(720),
@@ -454,6 +493,7 @@ mod tests {
             },
             StreamFormat {
                 itag: Some(43),
+                url: Some("https://stream.example/video43".into()),
                 mime_type: Some("video/webm; codecs=\"vp8.0, vorbis\"".into()),
                 width: Some(854),
                 height: Some(480),
@@ -462,6 +502,7 @@ mod tests {
             },
             StreamFormat {
                 itag: Some(140),
+                url: Some("https://stream.example/audio140".into()),
                 mime_type: Some("audio/mp4; codecs=\"mp4a.40.2\"".into()),
                 width: None,
                 height: None,
@@ -483,6 +524,7 @@ mod tests {
         let formats = vec![
             StreamFormat {
                 itag: Some(18),
+                url: Some("https://stream.example/video18".into()),
                 mime_type: Some("video/mp4; codecs=\"avc1\"".into()),
                 width: Some(640),
                 height: Some(360),
@@ -491,6 +533,7 @@ mod tests {
             },
             StreamFormat {
                 itag: Some(18),
+                url: Some("https://stream.example/video18".into()),
                 mime_type: Some("video/mp4; codecs=\"avc1\"".into()),
                 width: Some(640),
                 height: Some(360),

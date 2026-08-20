@@ -8,6 +8,9 @@ export const ErrorCode = {
   UnsupportedProvider: "unsupported_provider",
   UnauthorizedContent: "unauthorized_content",
   MetadataError: "metadata_error",
+  DownloadError: "download_error",
+  FormatNotFound: "format_not_found",
+  NotFound: "not_found",
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

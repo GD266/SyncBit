@@ -21,6 +21,15 @@ pub trait MediaProvider: Send + Sync {
         &self,
         url: Url,
     ) -> Pin<Box<dyn Future<Output = AppResult<MediaMetadata>> + Send + '_>>;
+
+    /// Resolves an authorized, directly downloadable URL for the given format.
+    /// Implementations must re-check authorization and return an error for any
+    /// content the user is not allowed to download.
+    fn resolve_download_url(
+        &self,
+        url: Url,
+        format_id: &str,
+    ) -> Pin<Box<dyn Future<Output = AppResult<String>> + Send + '_>>;
 }
 
 pub struct ProviderRegistry {
@@ -62,6 +71,16 @@ impl ProviderRegistry {
         let url = validate_media_url(raw_url)?;
         let provider = self.resolve(&url)?;
         provider.fetch_metadata(url).await
+    }
+
+    pub async fn resolve_download_url(
+        &self,
+        raw_url: &str,
+        format_id: &str,
+    ) -> AppResult<String> {
+        let url = validate_media_url(raw_url)?;
+        let provider = self.resolve(&url)?;
+        provider.resolve_download_url(url, format_id).await
     }
 }
 

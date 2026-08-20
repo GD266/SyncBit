@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use tauri::State;
 
 use crate::error::AppResult;
@@ -6,7 +8,7 @@ use crate::media::ProviderRegistry;
 
 #[tauri::command]
 pub async fn fetch_media_metadata(
-    state: State<'_, ProviderRegistry>,
+    state: State<'_, Arc<ProviderRegistry>>,
     url: String,
 ) -> AppResult<MediaMetadata> {
     state.fetch_metadata(&url).await

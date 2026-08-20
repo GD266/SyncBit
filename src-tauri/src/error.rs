@@ -27,10 +27,19 @@ pub enum AppError {
 
     #[error("could not retrieve metadata: {0}")]
     Metadata(String),
+
+    #[error("download failed: {0}")]
+    Download(String),
+
+    #[error("selected format is not available: {0}")]
+    FormatNotFound(String),
+
+    #[error("download task not found: {0}")]
+    NotFound(String),
 }
 
 impl AppError {
-    fn code(&self) -> &'static str {
+    pub fn code(&self) -> &'static str {
         match self {
             Self::Io(_) => "io_error",
             Self::Config(_) => "config_error",
@@ -40,6 +49,9 @@ impl AppError {
             Self::UnsupportedProvider(_) => "unsupported_provider",
             Self::UnauthorizedContent(_) => "unauthorized_content",
             Self::Metadata(_) => "metadata_error",
+            Self::Download(_) => "download_error",
+            Self::FormatNotFound(_) => "format_not_found",
+            Self::NotFound(_) => "not_found",
         }
     }
 }
