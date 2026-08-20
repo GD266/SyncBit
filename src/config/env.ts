@@ -11,7 +11,7 @@ export interface AppEnv {
 const DEFAULT_APP_NAME = "SyncBit";
 
 function loadAppEnv(): AppEnv {
-  const rawEnvironment = import.meta.env.VITE_APP_ENV ?? "production";
+  const rawEnvironment = import.meta.env.VITE_APP_ENV?.trim() || "production";
   if (rawEnvironment !== "development" && rawEnvironment !== "production") {
     throw new AppError(
       ErrorCode.ConfigError,

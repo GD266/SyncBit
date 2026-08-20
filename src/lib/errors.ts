@@ -3,6 +3,11 @@ export const ErrorCode = {
   ConfigError: "config_error",
   BackendError: "backend_error",
   InvokeFailed: "invoke_failed",
+  InvalidUrl: "invalid_url",
+  UnsupportedUrl: "unsupported_url",
+  UnsupportedProvider: "unsupported_provider",
+  UnauthorizedContent: "unauthorized_content",
+  MetadataError: "metadata_error",
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

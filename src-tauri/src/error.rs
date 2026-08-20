@@ -12,6 +12,21 @@ pub enum AppError {
 
     #[error("{0}")]
     Internal(String),
+
+    #[error("invalid URL: {0}")]
+    InvalidUrl(String),
+
+    #[error("unsupported URL: {0}")]
+    UnsupportedUrl(String),
+
+    #[error("unsupported provider: {0}")]
+    UnsupportedProvider(String),
+
+    #[error("content requires authorization: {0}")]
+    UnauthorizedContent(String),
+
+    #[error("could not retrieve metadata: {0}")]
+    Metadata(String),
 }
 
 impl AppError {
@@ -20,6 +35,11 @@ impl AppError {
             Self::Io(_) => "io_error",
             Self::Config(_) => "config_error",
             Self::Internal(_) => "internal_error",
+            Self::InvalidUrl(_) => "invalid_url",
+            Self::UnsupportedUrl(_) => "unsupported_url",
+            Self::UnsupportedProvider(_) => "unsupported_provider",
+            Self::UnauthorizedContent(_) => "unauthorized_content",
+            Self::Metadata(_) => "metadata_error",
         }
     }
 }

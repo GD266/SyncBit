@@ -1,25 +1,16 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { appEnv } from "../../config/env";
 import { useAppInfo } from "../../hooks/useAppInfo";
+import { useMediaMetadata } from "../../hooks/useMediaMetadata";
+import { toAppError } from "../../lib/errors";
+import { parseMediaUrl } from "../../lib/url";
+import { MediaPreview } from "../media/MediaPreview";
 import { AppHeader } from "../layout/AppHeader";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { Panel } from "../ui/Panel";
 import { Progress } from "../ui/Progress";
 import "./HomeScreen.css";
-
-type Phase = "idle" | "loading";
-
-const SIMULATED_FETCH_MS = 1800;
-
-function isValidUrl(value: string): boolean {
-  try {
-    const url = new URL(value.trim());
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
@@ -39,44 +30,13 @@ function modKey(): string {
 
 export function HomeScreen() {
   const [value, setValue] = useState("");
-  const [phase, setPhase] = useState<Phase>("idle");
-  const [error, setError] = useState<string | null>(null);
+  const [inputError, setInputError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const timerRef = useRef<number | null>(null);
   const { status, info } = useAppInfo();
+  const { status: mediaStatus, metadata, message, load, reset } =
+    useMediaMetadata();
 
-  useEffect(() => {
-    return () => {
-      if (timerRef.current !== null) {
-        window.clearTimeout(timerRef.current);
-      }
-    };
-  }, []);
-
-  const handleSubmit = useCallback(
-    (event: FormEvent) => {
-      event.preventDefault();
-      if (phase === "loading") {
-        return;
-      }
-      const trimmed = value.trim();
-      if (!trimmed) {
-        inputRef.current?.focus();
-        return;
-      }
-      if (!isValidUrl(trimmed)) {
-        setError("Enter a valid URL, including https://");
-        inputRef.current?.focus();
-        return;
-      }
-      setError(null);
-      setPhase("loading");
-      timerRef.current = window.setTimeout(() => {
-        setPhase("idle");
-      }, SIMULATED_FETCH_MS);
-    },
-    [phase, value],
-  );
+  const loading = mediaStatus === "loading";
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -96,7 +56,7 @@ export function HomeScreen() {
         navigator.clipboard?.readText().then((text) => {
           if (text) {
             setValue(text);
-            setError(null);
+            setInputError(null);
           }
         }).catch(() => {});
       }
@@ -105,6 +65,31 @@ export function HomeScreen() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
+
+  const handleSubmit = useCallback(
+    (event: FormEvent) => {
+      event.preventDefault();
+      if (loading) {
+        return;
+      }
+      const trimmed = value.trim();
+      if (!trimmed) {
+        inputRef.current?.focus();
+        return;
+      }
+      let parsed;
+      try {
+        parsed = parseMediaUrl(trimmed);
+      } catch (error) {
+        setInputError(toAppError(error).message);
+        inputRef.current?.focus();
+        return;
+      }
+      setInputError(null);
+      load(parsed.canonical);
+    },
+    [loading, value, load],
+  );
 
   const backendLabel =
     status === "ready"
@@ -129,8 +114,8 @@ export function HomeScreen() {
               Turn any link into a file.
             </h1>
             <p className="hero__subtitle">
-              Paste a URL and SyncBit fetches the content — files, media, pages —
-              and keeps it in sync locally.
+              Paste a video link and SyncBit pulls its metadata — choose a
+              format, and the download follows.
             </p>
           </section>
 
@@ -141,47 +126,64 @@ export function HomeScreen() {
               controlClassName="fetch__bar"
               label="Link"
               hint={`Press ${modKey()}K to focus`}
-              placeholder="https://example.com/file.zip"
+              placeholder="https://www.youtube.com/watch?v=…"
               type="url"
               autoComplete="url"
               spellCheck={false}
               value={value}
-              disabled={phase === "loading"}
-              error={error ?? undefined}
+              disabled={loading}
+              error={inputError ?? undefined}
               onChange={(event) => {
                 setValue(event.target.value);
-                if (error) {
-                  setError(null);
+                setInputError(null);
+                if (mediaStatus !== "idle") {
+                  reset();
                 }
               }}
               action={
                 <Button
                   type="submit"
                   className="fetch__submit"
-                  loading={phase === "loading"}
+                  loading={loading}
                 >
-                  {phase === "loading" ? "Fetching…" : "Fetch"}
+                  {loading ? "Checking…" : "Fetch"}
                 </Button>
               }
             />
 
-            {phase === "loading" && (
+            {loading && (
               <div className="fetch__status" aria-live="polite">
                 <Progress />
                 <p className="fetch__status-text">
-                  Fetching {value.trim()}…
+                  Checking {value.trim()}…
                 </p>
               </div>
             )}
           </form>
 
-          <Panel className="empty" aria-label="No downloads yet">
-            <p className="empty__title">No downloads yet</p>
-            <p className="empty__text">
-              Fetched files will appear here with their sync status. Paste a
-              link above to get started.
-            </p>
-          </Panel>
+          {mediaStatus === "ready" && metadata !== null && (
+            <MediaPreview key={metadata.sourceUrl} metadata={metadata} />
+          )}
+
+          {mediaStatus === "error" && (
+            <Panel className="preview-error" aria-live="polite">
+              <p className="preview-error__title">Couldn&apos;t load that link</p>
+              <p className="preview-error__text">{message}</p>
+              <p className="preview-error__hint">
+                Double-check the link, then try again.
+              </p>
+            </Panel>
+          )}
+
+          {mediaStatus === "idle" && (
+            <Panel className="empty" aria-label="No downloads yet">
+              <p className="empty__title">No media loaded yet</p>
+              <p className="empty__text">
+                Paste a link above to see its title, duration and available
+                formats.
+              </p>
+            </Panel>
+          )}
 
           <footer className="home__footer">
             <span className="home__footer-item">

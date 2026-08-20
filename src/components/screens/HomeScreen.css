@@ -129,6 +129,38 @@
   color: var(--text-2);
 }
 
+.preview-error {
+  margin-top: 1.75rem;
+  padding: 2rem 2rem;
+  text-align: center;
+  border-color: var(--danger);
+  animation: rise 480ms var(--ease-out) both;
+  animation-delay: 200ms;
+}
+
+.preview-error__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.preview-error__text {
+  margin: 0.5rem auto 0;
+  max-width: 52ch;
+  font-size: 0.875rem;
+  letter-spacing: -0.005em;
+  line-height: 1.55;
+  color: var(--text-2);
+}
+
+.preview-error__hint {
+  margin: 0.75rem 0 0;
+  font-size: 0.75rem;
+  letter-spacing: -0.005em;
+  color: var(--text-3);
+}
+
 .home__footer {
   margin-top: auto;
   padding-top: 2.25rem;
