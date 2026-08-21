@@ -68,7 +68,7 @@ export function parseMediaUrl(raw: string): ParsedMediaUrl {
   if (!SUPPORTED_HOSTS.includes(host as (typeof SUPPORTED_HOSTS)[number])) {
     throw new AppError(
       ErrorCode.UnsupportedProvider,
-      `SyncBit does not support "${host}" yet. Supported hosts: ${SUPPORTED_HOSTS.join(", ")}.`,
+      `GrabAClip does not support "${host}" yet. Supported hosts: ${SUPPORTED_HOSTS.join(", ")}.`,
     );
   }
 

@@ -23,7 +23,7 @@ pub fn run() {
         .manage(download_manager)
         .setup(|app| {
             let data_dir = storage::ensure_app_data_dir(app.handle())?;
-            println!("SyncBit data directory: {}", data_dir.display());
+            println!("GrabAClip data directory: {}", data_dir.display());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -37,5 +37,5 @@ pub fn run() {
             commands::download::cleanup_download,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running SyncBit application");
+        .expect("error while running GrabAClip application");
 }

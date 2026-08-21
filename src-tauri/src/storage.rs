@@ -5,7 +5,7 @@ use tauri::{AppHandle, Manager};
 use crate::error::{AppError, AppResult};
 
 /// Ensures the per-user application data directory exists and returns its path.
-/// All SyncBit persistence (configuration, queue state, downloads) lives here.
+/// All GrabAClip persistence (configuration, queue state, downloads) lives here.
 pub fn ensure_app_data_dir(app: &AppHandle) -> AppResult<PathBuf> {
     let dir = app
         .path()

@@ -8,7 +8,7 @@ export interface AppEnv {
   readonly version: string | null;
 }
 
-const DEFAULT_APP_NAME = "SyncBit";
+const DEFAULT_APP_NAME = "GrabAClip";
 
 function loadAppEnv(): AppEnv {
   const rawEnvironment = import.meta.env.VITE_APP_ENV?.trim() || "production";

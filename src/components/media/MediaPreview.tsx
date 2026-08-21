@@ -60,7 +60,7 @@ export function MediaPreview({ metadata }: MediaPreviewProps) {
             onError={() => setThumbnailFailed(true)}
           />
         ) : (
-          <div className="media-preview__thumb-fallback">SyncBit</div>
+          <div className="media-preview__thumb-fallback">GrabAClip</div>
         )}
         {duration !== null && (
           <span className="media-preview__duration">{duration}</span>

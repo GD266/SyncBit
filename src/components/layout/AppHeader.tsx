@@ -8,7 +8,7 @@ export function AppHeader() {
       <div className="app-header__inner">
         <div className="app-header__brand">
           <BrandMark size={18} />
-          <span className="app-header__name">SyncBit</span>
+          <span className="app-header__name">GrabAClip</span>
         </div>
         <span className="app-header__env">
           <span className="app-header__dot" aria-hidden="true" />

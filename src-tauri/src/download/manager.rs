@@ -18,7 +18,7 @@ pub const DOWNLOAD_EVENT: &str = "download://task";
 
 const PROGRESS_EMIT_INTERVAL: Duration = Duration::from_millis(120);
 const MAX_FILENAME_CHARS: usize = 120;
-const USER_AGENT: &str = "SyncBit";
+const USER_AGENT: &str = "GrabAClip";
 
 /// Owns download tasks. The UI talks to this engine only through commands;
 /// providers resolve authorized stream URLs and the engine never touches the

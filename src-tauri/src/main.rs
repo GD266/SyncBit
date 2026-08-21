@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    syncbit_lib::run()
+    grab_a_clip_lib::run()
 }

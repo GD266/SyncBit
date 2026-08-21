@@ -109,12 +109,12 @@ export function HomeScreen() {
       <main id="main" className="home">
         <div className="home__inner">
           <section className="hero" aria-labelledby="hero-title">
-            <p className="hero__eyebrow">SyncBit</p>
+            <p className="hero__eyebrow">GrabAClip</p>
             <h1 id="hero-title" className="hero__title">
-              Turn any link into a file.
+              Download videos. Simply.
             </h1>
             <p className="hero__subtitle">
-              Paste a video link and SyncBit pulls its metadata — choose a
+              Paste a video link and GrabAClip pulls its metadata — choose a
               format, and the download follows.
             </p>
           </section>

@@ -21,7 +21,7 @@ pub struct AppInfo {
 pub fn get_app_info(app: AppHandle, config: State<'_, RuntimeConfig>) -> AppResult<AppInfo> {
     let data_dir = storage::ensure_app_data_dir(&app).map_err(AppError::from)?;
     Ok(AppInfo {
-        name: "SyncBit",
+        name: "GrabAClip",
         version: env!("CARGO_PKG_VERSION"),
         environment: config.environment.as_str(),
         platform: std::env::consts::OS,
