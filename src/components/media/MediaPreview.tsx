@@ -33,11 +33,14 @@ export function MediaPreview({ metadata }: MediaPreviewProps) {
       ? formatDuration(metadata.durationSeconds)
       : null;
 
-  const { phase, task } = download;
+  const { phase, task, message } = download;
   const progressPercent =
     task?.progress !== null && task?.progress !== undefined
       ? Math.round(Math.min(1, Math.max(0, task.progress)) * 100)
       : null;
+
+  const isActive = phase === "starting" || phase === "downloading";
+  const isTerminal = phase === "completed" || phase === "failed" || phase === "cancelled";
 
   function handleFormatChange(event: ChangeEvent<HTMLSelectElement>) {
     setSelectedFormatId(event.target.value);
@@ -49,8 +52,53 @@ export function MediaPreview({ metadata }: MediaPreviewProps) {
     }
   }
 
+  function getStatusLabel(): string {
+    switch (phase) {
+      case "starting":
+        return "Preparing…";
+      case "downloading":
+        return "Downloading";
+      case "completed":
+        return "Completed";
+      case "failed":
+        return "Failed";
+      case "cancelled":
+        return "Cancelled";
+      default:
+        return "";
+    }
+  }
+
+  function formatDownloaded(): string {
+    if (!task || task.downloadedBytes === null) {
+      return "—";
+    }
+    return formatBytes(task.downloadedBytes);
+  }
+
+  function formatTotal(): string {
+    if (!task || task.totalBytes === null) {
+      return "—";
+    }
+    return formatBytes(task.totalBytes);
+  }
+
+  function formatSpeedDisplay(): string {
+    if (!task || task.speedBytesPerSecond === null) {
+      return "—";
+    }
+    return formatSpeed(task.speedBytesPerSecond);
+  }
+
+  function formatEtaDisplay(): string {
+    if (!task || task.etaSeconds === null) {
+      return "—";
+    }
+    return formatEta(task.etaSeconds);
+  }
+
   return (
-    <Panel className="media-preview">
+    <Panel className="media-preview" role="region" aria-label="Download progress">
       <div className="media-preview__thumb">
         {metadata.thumbnail !== null && !thumbnailFailed ? (
           <img
@@ -98,8 +146,20 @@ export function MediaPreview({ metadata }: MediaPreviewProps) {
           </select>
         </div>
 
-        {phase === "downloading" && task !== null && (
-          <div className="media-preview__download" aria-live="polite">
+        {isActive && task !== null && (
+          <div className="media-preview__download" aria-live="polite" aria-busy="true">
+            <div className="media-preview__download-header">
+              <span className="media-preview__status">
+                {getStatusLabel()}
+              </span>
+              <span
+                className="media-preview__progress-percent"
+                aria-live="off"
+              >
+                {progressPercent !== null ? `${progressPercent}%` : "—"}
+              </span>
+            </div>
+
             <div
               className={
                 progressPercent !== null
@@ -121,25 +181,75 @@ export function MediaPreview({ metadata }: MediaPreviewProps) {
                 }
               />
             </div>
-            <div className="media-preview__download-meta">
-              <span>
-                {progressPercent !== null
-                  ? `${progressPercent}%`
-                  : "Downloading…"}
+
+            <dl className="media-preview__details">
+              <div className="media-preview__detail">
+                <dt>Downloaded</dt>
+                <dd>{formatDownloaded()}</dd>
+              </div>
+              <div className="media-preview__detail">
+                <dt>Total</dt>
+                <dd>{formatTotal()}</dd>
+              </div>
+              <div className="media-preview__detail">
+                <dt>Speed</dt>
+                <dd>{formatSpeedDisplay()}</dd>
+              </div>
+              <div className="media-preview__detail">
+                <dt>Remaining</dt>
+                <dd>{formatEtaDisplay()}</dd>
+              </div>
+            </dl>
+          </div>
+        )}
+
+        {phase === "completed" && task !== null && (
+          <div className="media-preview__download media-preview__download--completed" aria-live="polite">
+            <div className="media-preview__download-header">
+              <span className="media-preview__status media-preview__status--completed">
+                Completed
               </span>
-              {task.totalBytes !== null && (
-                <span>
-                  {formatBytes(task.downloadedBytes ?? 0)} /{" "}
-                  {formatBytes(task.totalBytes)}
-                </span>
-              )}
-              {task.speedBytesPerSecond !== null && (
-                <span>{formatSpeed(task.speedBytesPerSecond)}</span>
-              )}
-              {task.etaSeconds !== null && (
-                <span>{formatEta(task.etaSeconds)} left</span>
-              )}
+              <span className="media-preview__progress-percent">100%</span>
             </div>
+            <div className="media-preview__progress media-preview__progress--completed">
+              <div className="media-preview__progress-fill" style={{ width: "100%" }} />
+            </div>
+            <dl className="media-preview__details">
+              <div className="media-preview__detail">
+                <dt>Saved</dt>
+                <dd>{formatBytes(task.downloadedBytes ?? 0)}</dd>
+              </div>
+              {task.outputPath !== null && (
+                <div className="media-preview__detail media-preview__detail--path">
+                  <dt>Location</dt>
+                  <dd title={task.outputPath}>{task.outputPath}</dd>
+                </div>
+              )}
+            </dl>
+          </div>
+        )}
+
+        {phase === "failed" && (
+          <div className="media-preview__download media-preview__download--failed" aria-live="assertive">
+            <div className="media-preview__download-header">
+              <span className="media-preview__status media-preview__status--failed">
+                Failed
+              </span>
+            </div>
+            {message && (
+              <p className="media-preview__error">{message}</p>
+            )}
+          </div>
+        )}
+
+        {phase === "cancelled" && (
+          <div className="media-preview__download media-preview__download--cancelled" aria-live="polite">
+            <div className="media-preview__download-header">
+              <span className="media-preview__status media-preview__status--cancelled">
+                Cancelled
+              </span>
+            </div>
+            <p className="media-preview__error">Download cancelled.</p>
           </div>
         )}
 
@@ -165,24 +275,12 @@ export function MediaPreview({ metadata }: MediaPreviewProps) {
               Cancel
             </Button>
           )}
-          {(phase === "completed" ||
-            phase === "failed" ||
-            phase === "cancelled") && (
+          {isTerminal && (
             <Button variant="secondary" onClick={download.dismiss}>
               Dismiss
             </Button>
           )}
         </div>
-
-        {phase === "completed" && task !== null && task.outputPath !== null && (
-          <p className="media-preview__note">Saved to {task.outputPath}</p>
-        )}
-        {phase === "failed" && download.message !== null && (
-          <p className="media-preview__note">{download.message}</p>
-        )}
-        {phase === "cancelled" && (
-          <p className="media-preview__note">Download cancelled.</p>
-        )}
       </div>
     </Panel>
   );
